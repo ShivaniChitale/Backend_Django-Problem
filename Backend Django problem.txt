@@ -1,0 +1,77 @@
+
+from django.db import models
+
+class ServiceRequest(models.Model):
+    STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('In Progress', 'In Progress'),
+        ('Resolved', 'Resolved'),
+    )
+    
+    customer_name = models.CharField(max_length=100)
+    service_type = models.CharField(max_length=100)
+    details = models.TextField()
+    attachment = models.FileField(upload_to='attachments/')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.service_type
+
+
+from django.shortcuts import render, redirect
+from .models import ServiceRequest
+
+def submit_service_request(request):
+    if request.method == 'POST':
+        # Process form submission
+        form = ServiceRequestForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('request_tracking')
+    else:
+        # Display form
+        form = ServiceRequestForm()
+    return render(request, 'submit_service_request.html', {'form': form})
+
+def request_tracking(request):
+    requests = ServiceRequest.objects.all()
+    return render(request, 'request_tracking.html', {'requests': requests})
+
+# forms.py
+from django import forms
+from .models import ServiceRequest
+
+class ServiceRequestForm(forms.ModelForm):
+    class Meta:
+        model = ServiceRequest
+        fields = ['customer_name', 'service_type', 'details', 'attachment']
+
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Submit</button>
+</form>
+
+
+
+<table>
+    <tr>
+        <th>Customer Name</th>
+        <th>Service Type</th>
+        <th>Status</th>
+        <th>Date Submitted</th>
+        <th>Date Resolved</th>
+    </tr>
+    {% for request in requests %}
+    <tr>
+        <td>{{ request.customer_name }}</td>
+        <td>{{ request.service_type }}</td>
+        <td>{{ request.status }}</td>
+        <td>{{ request.submitted_at }}</td>
+        <td>{{ request.resolved_at }}</td>
+    </tr>
+    {% endfor %}
+</table>
